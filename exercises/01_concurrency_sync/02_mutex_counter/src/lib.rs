@@ -32,7 +32,8 @@ pub fn concurrent_counter(n_threads: usize, count_per_thread: usize) -> usize {
         handle.join().unwrap();
     }
 
-    *counter.lock().unwrap()
+    let result = *counter.lock().unwrap();
+    result
 }
 
 /// Add elements to a shared vector concurrently using multiple threads.
