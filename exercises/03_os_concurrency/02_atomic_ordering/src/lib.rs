@@ -14,6 +14,7 @@
 //! thread B will see all writes that thread A performed before the Release.
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::OnceLock;
 
 /// Use Release-Acquire semantics to safely pass data between two threads.
 ///
@@ -61,45 +62,39 @@ impl FlagChannel {
     }
 }
 
-/// A simple once-initializer using SeqCst.
+impl Default for FlagChannel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A simple once-initializer.
 /// Guarantees `init` is executed only once, and all threads see the initialized value.
 pub struct OnceCell {
-    initialized: AtomicBool,
-    value: AtomicU32,
+    value: OnceLock<u32>,
 }
 
 impl OnceCell {
     pub const fn new() -> Self {
-        Self {
-            initialized: AtomicBool::new(false),
-            value: AtomicU32::new(0),
-        }
+        Self { value: OnceLock::new() }
     }
 
     /// Attempt initialization. If not yet initialized, store value and return true.
     /// If already initialized, return false.
     ///
-    /// Hint: use `compare_exchange` to ensure only one thread succeeds.
     pub fn init(&self, val: u32) -> bool {
-        match self
-            .initialized
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        {
-            Ok(_) => {
-                self.value.store(val, Ordering::SeqCst);
-                true
-            }
-            Err(_) => false,
-        }
+        self.value.set(val).is_ok()
     }
 
     /// Get value. Returns Some if initialized, otherwise None.
     pub fn get(&self) -> Option<u32> {
-        if self.initialized.load(Ordering::SeqCst) {
-            Some(self.value.load(Ordering::SeqCst))
-        } else {
-            None
-        }
+        self.value.get().copied()
+    }
+}
+
+impl Default for OnceCell {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
