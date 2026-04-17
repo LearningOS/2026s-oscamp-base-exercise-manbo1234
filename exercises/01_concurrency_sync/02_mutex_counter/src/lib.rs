@@ -22,7 +22,9 @@ pub fn concurrent_counter(n_threads: usize, count_per_thread: usize) -> usize {
     for _ in 0..n_threads {
         let counter = Arc::clone(&counter);
         handles.push(thread::spawn(move || {
-            *counter.lock().unwrap() += count_per_thread;
+            for _ in 0..count_per_thread {
+                *counter.lock().unwrap() += 1;
+            }
         }));
     }
 
